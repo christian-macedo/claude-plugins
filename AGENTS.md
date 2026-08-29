@@ -36,7 +36,7 @@ Plugin names *are* migratable, with a `renames` map:
 ```json
 {
   "name": "<plugin name, matching its plugin.json>",
-  "source": { "source": "github", "repo": "<owner>/<repo>", "ref": "<plugin>--v<version>" },
+  "source": { "source": "url", "url": "https://github.com/<owner>/<repo>.git", "ref": "<plugin>--v<version>" },
   "description": "<one sentence, present tense>",
   "version": "<matching the tag and the plugin.json>"
 }
@@ -47,6 +47,9 @@ Three values must agree, or a release is broken: the `version` here, the `versio
 checks exactly that agreement and refuses when it fails.
 
 Pin `ref` to a tag. Never point at `main`, or people install half-finished commits.
+
+Use the `url` source type, not `github`. A `github` plugin source clones over SSH and fails for
+anyone without a GitHub SSH key; an HTTPS URL clones anonymously and works for everyone.
 
 Then add a row to the table in [README.md](README.md).
 

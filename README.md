@@ -32,12 +32,16 @@ referenced by a pinned tag:
 {
   "name": "job-candidacy",
   "source": {
-    "source": "github",
-    "repo": "christian-macedo/job-candidacy",
+    "source": "url",
+    "url": "https://github.com/christian-macedo/job-candidacy.git",
     "ref": "job-candidacy--v1.0.0"
   }
 }
 ```
+
+Note the `url` source type rather than `github`. A `github` plugin source clones over SSH, which
+fails for anyone without a GitHub SSH key configured. An explicit HTTPS URL clones anonymously,
+so a public plugin installs for everyone.
 
 Two things follow from that, both deliberate:
 
