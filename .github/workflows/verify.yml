@@ -1,0 +1,59 @@
+name: verify
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  index:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # A syntax error or a missing field here breaks installation for every user,
+      # and does it silently: nothing fails until someone tries to install.
+      - name: Index is well formed
+        run: |
+          node -e "
+            const m = JSON.parse(require('fs').readFileSync('.claude-plugin/marketplace.json','utf8'));
+            if (m.name !== 'tousledmonkey') {
+              throw new Error('marketplace name changed to ' + m.name + '. A rename does not migrate existing users.');
+            }
+            if (!m.owner || !m.owner.name) throw new Error('owner.name is required');
+            if (!Array.isArray(m.plugins) || !m.plugins.length) throw new Error('plugins must be a non-empty array');
+            for (const p of m.plugins) {
+              for (const f of ['name','source','version','description']) {
+                if (!p[f]) throw new Error(p.name + ': missing ' + f);
+              }
+              if (typeof p.source !== 'object' || !p.source.ref) {
+                throw new Error(p.name + ': source must pin a ref, never track a branch');
+              }
+              if (p.source.source === 'github') {
+                throw new Error(p.name + ': use the url source type. github clones over SSH and fails without a key.');
+              }
+              if (p.source.ref !== p.name + '--v' + p.version) {
+                throw new Error(p.name + ': ref ' + p.source.ref + ' does not match version ' + p.version);
+              }
+              console.log(p.name + ' ' + p.version + ' -> ' + p.source.url + ' @ ' + p.source.ref);
+            }
+          "
+
+      # The failure this catches: bumping ref and version here before tagging the
+      # plugin repository, which publishes an entry pointing at nothing.
+      - name: Every pinned tag exists
+        run: |
+          node -e "
+            const m = JSON.parse(require('fs').readFileSync('.claude-plugin/marketplace.json','utf8'));
+            console.log(m.plugins.map(p => p.source.url + ' ' + p.source.ref).join('\n'));
+          " | while read -r url ref; do
+            if git ls-remote --tags "$url" "refs/tags/$ref" | grep -q .; then
+              echo "ok: $ref exists in $url"
+            else
+              echo "::error::$ref does not exist in $url. Tag the plugin repository first."
+              exit 1
+            fi
+          done
